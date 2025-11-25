@@ -1,0 +1,130 @@
+# fcfs_gantt_validated.py - FCFS with arrival times, forced input, box-style Gantt, and max=100 validation
+
+# Function to get a positive integer from user, with optional zero allowed and max limit
+def get_positive_int(prompt, allow_zero=False, max_value=None):
+    while True:
+        s = input(prompt).strip()                   # Take input and remove spaces
+        if s.isdigit():                             # Check if input contains only digits
+            v = int(s)                              # Convert to integer
+            if (v > 0 or (allow_zero and v == 0)): # Check if valid (>0 or 0 allowed)
+                if max_value is not None and v > max_value:  # Check if exceeds maximum
+                    print(f"Value must not exceed {max_value}. Please try again.")
+                    continue
+                return v                             # Valid input, return it
+            # Prompt message if invalid number
+            print("Please enter a positive whole number." if not allow_zero else "Please enter a whole number >= 0.")
+        else:
+            print("Invalid input! Please enter a valid number.")  # Not digits
+
+# Function to get non-negative integer input (for arrival time), with optional max limit
+def get_nonneg_int(prompt, max_value=None):
+    while True:
+        s = input(prompt).strip()                   # Take input and remove spaces
+        if s.isdigit():                             # Check if input contains only digits
+            v = int(s)
+            if max_value is not None and v > max_value:  # Check if exceeds maximum
+                print(f"Value must not exceed {max_value}. Please try again.")
+                continue
+            return v                                 # Return valid input
+        print("Invalid input! Please enter a non-negative whole number (0,1,2...).")  # Not valid
+
+# Function to schedule FCFS and compute waiting/turnaround times
+def schedule_fcfs(processes):
+    # Sort processes by arrival time, then PID
+    procs = sorted(processes, key=lambda x: (x["arr"], x["pid"]))
+    t = 0                                        # Current time in CPU
+    gantt_segments = []                           # List to store Gantt chart segments
+    for p in procs:
+        if t < p["arr"]:                          # If CPU idle before process arrival
+            gantt_segments.append(("Idle", t, p["arr"]))  # Add idle segment
+            t = p["arr"]                          # Move time to arrival
+        start = t                                  # Process start time
+        end = start + p["burst"]                   # Process end time
+        gantt_segments.append((p["pid"], start, end))  # Add to Gantt chart
+        p["start"] = start                         # Store start time
+        p["finish"] = end                          # Store finish time
+        p["waiting"] = start - p["arr"]            # Calculate waiting time
+        p["turnaround"] = end - p["arr"]           # Calculate turnaround time
+        t = end                                    # Move current time to end of process
+    return procs, gantt_segments                  # Return updated processes and Gantt segments
+
+# Function to print the process table with waiting and turnaround times
+def print_table(procs):
+    print("\nProcesses  Arrival  Burst  Waiting  Turnaround")
+    for p in procs:
+        # Display each process info in formatted columns
+        print(f"{p['pid']:<8}{p['arr']:>8}{p['burst']:>7}{p['waiting']:>9}{p['turnaround']:>12}")
+    n = len(procs)                                # Total number of processes
+    avg_w = sum(p['waiting'] for p in procs) / n  # Average waiting time
+    avg_t = sum(p['turnaround'] for p in procs) / n  # Average turnaround time
+    print(f"\nAverage waiting time = {avg_w:.1f}")    # Print average waiting
+    print(f"Average turn around time = {avg_t:.12g}")  # Print average turnaround
+
+# Function to print Gantt chart in box style
+def print_gantt_box(gsegments):
+    unit = 1
+    min_w = 3                                      # Minimum width of a box
+    widths = []
+    for _, s, e in gsegments:
+        dur = max(1, e - s)                        # Duration at least 1
+        w = max(min_w, dur * unit * 3)             # Box width proportional to duration
+        widths.append(w)
+
+    top = ""                                       # Top border of Gantt chart
+    middle = ""                                    # Middle with PIDs
+    bottom = ""                                    # Bottom border
+    positions = []                                 # Left edge positions for timeline numbers
+    cur_pos = 0
+    for idx, (pid, s, e) in enumerate(gsegments):
+        w = widths[idx]                             # Box width
+        top += "+" + "-" * w
+        middle += "|" + pid.center(w)               # Center PID in box
+        bottom += "+" + "-" * w
+        positions.append((cur_pos + 1, s))          # Track left edge for timeline
+        cur_pos += w + 1
+    top += "+"
+    middle += "|"
+    bottom += "+"
+
+    print("\nGANTT CHART:")
+    print(top)                                     # Print top border
+    print(middle)                                  # Print middle with PIDs
+    print(bottom)                                  # Print bottom border
+
+    # Timeline numbers line
+    line_len = len(top)
+    timeline = [" "] * line_len
+    for pos, time_val in positions:
+        tstr = str(time_val)
+        for i, ch in enumerate(tstr):
+            if pos + i < line_len:
+                timeline[pos + i] = ch
+    final_time = gsegments[-1][2]                 # Last end time
+    fstr = str(final_time)
+    end_pos = len(top) - 1
+    for i, ch in enumerate(reversed(fstr)):
+        idx = end_pos - i
+        if 0 <= idx < line_len:
+            timeline[idx] = ch
+    print("".join(timeline))
+    print()
+
+# Main program
+def main():
+    print("=== FCFS Scheduling (fixed PIDs, user sets count, max=100) ===")
+    num = get_positive_int("Enter the number of processes (1-100): ", max_value=100)  # Get number of processes
+
+    processes = []
+    for i in range(num):
+        pid = f"P{i+1}"                           # Assign PID
+        arr = get_nonneg_int(f"Enter Arrival Time for {pid}: ", max_value=100)  # Arrival time
+        burst = get_positive_int(f"Enter Burst Time for {pid}: ", allow_zero=False, max_value=100)  # Burst time
+        processes.append({"pid": pid, "arr": arr, "burst": burst})
+
+    procs, gsegments = schedule_fcfs(processes)   # Schedule processes
+    print_table(procs)                             # Print process table
+    print_gantt_box(gsegments)                     # Print Gantt chart
+
+# Run main if executed directly
+if __name__ == "__main__":
+    main()
