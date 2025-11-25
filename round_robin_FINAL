@@ -1,0 +1,113 @@
+# Function to validate input as positive integer
+def validation(prompt):
+    while True:
+        value = input(prompt).strip()
+        if not value.isdigit():
+            print("Invalid input! Please enter a positive whole number.")
+            continue
+        value = int(value)
+        if value <= 0:
+            print("Value must be greater than 0.")
+            continue
+        return value
+
+# Get number of processes and time slice with validation
+num_processes = validation("How many processes? ")
+time_slice = validation("Input time slice: ")
+
+# Get burst times and arrival times for each process
+burst_times = []
+arrival_times = []
+for i in range(num_processes):
+    bt = validation(f"Input burst time for process P{i+1}: ")
+    burst_times.append(bt)
+    at = validation(f"Input arrival time for process P{i+1} (>=0): ")
+    arrival_times.append(at)
+
+# Display burst and arrival times
+print("\nProcesses Info:")
+for i in range(num_processes):
+    print(f"P{i+1}: Burst Time = {burst_times[i]}, Arrival Time = {arrival_times[i]}")
+
+print()
+
+# Round Robin Simulation with arrival times
+remaining = burst_times.copy()
+time = 0
+gantt_chart = []  # stores tuples: (process_name, start, end)
+queue = []
+visited = [False] * num_processes  # track if process is added to queue
+
+while True:
+    # Add processes that have arrived to the queue
+    for i in range(num_processes):
+        if arrival_times[i] <= time and not visited[i]:
+            queue.append(i)
+            visited[i] = True
+
+    if not queue:
+        # If queue empty, move time forward to next arriving process
+        future_arrivals = [arrival_times[i] for i in range(num_processes) if not visited[i]]
+        if not future_arrivals:
+            break  # all done
+        time = min(future_arrivals)
+        continue
+
+    idx = queue.pop(0)
+    start = time
+
+    if remaining[idx] > time_slice:
+        time += time_slice
+        remaining[idx] -= time_slice
+    else:
+        time += remaining[idx]
+        remaining[idx] = 0
+
+    end = time
+    gantt_chart.append((f"P{idx+1}", start, end))
+
+    # Re-add process to queue if it still has remaining burst time
+    for i in range(num_processes):
+        if arrival_times[i] <= time and not visited[i]:
+            queue.append(i)
+            visited[i] = True
+    if remaining[idx] > 0:
+        queue.append(idx)
+
+
+# ============================
+# CALCULATE WAITING & TURNAROUND TIME
+# ============================
+
+completion_time = [0] * num_processes
+for (p, start, end) in gantt_chart:
+    idx = int(p[1:]) - 1
+    completion_time[idx] = end
+
+turnaround_time = [completion_time[i] - arrival_times[i] for i in range(num_processes)]
+waiting_time = [turnaround_time[i] - burst_times[i] for i in range(num_processes)]
+
+average_wt = sum(waiting_time) / num_processes
+
+# Display table
+print("\nProcess | Burst Time | Arrival Time | Waiting Time | Turnaround Time")
+for i in range(num_processes):
+    print(f"P{i+1}\t     {burst_times[i]}\t       {arrival_times[i]}\t       {waiting_time[i]}\t         {turnaround_time[i]}")
+
+print(f"\nAverage Waiting Time: {average_wt:.2f}")
+
+# ============================
+# PRINT ASCII GANTT CHART
+# ============================
+print()
+
+print("Processes and Gantt Chart:")
+print()
+
+for (p, start, end) in gantt_chart:
+    print(f"| {p} |", end="   ")
+print()
+print()
+for (p, start, end) in gantt_chart:
+    print(f" {start}-->{end}", end="   ")
+print()
