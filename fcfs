@@ -1,0 +1,123 @@
+# fcfs_gantt_validated.py - FCFS with arrival times, forced input, box-style Gantt, and max=100 validation
+
+def get_positive_int(prompt, allow_zero=False, max_value=None):
+    while True:
+        s = input(prompt).strip()
+        if s.isdigit():
+            v = int(s)
+            if (v > 0 or (allow_zero and v == 0)):
+                if max_value is not None and v > max_value:
+                    print(f"Value must not exceed {max_value}. Please try again.")
+                    continue
+                return v
+            print("Please enter a positive whole number." if not allow_zero else "Please enter a whole number >= 0.")
+        else:
+            print("Invalid input! Please enter a valid number.")
+
+def get_nonneg_int(prompt, max_value=None):
+    # arrival can be 0
+    while True:
+        s = input(prompt).strip()
+        if s.isdigit():
+            v = int(s)
+            if max_value is not None and v > max_value:
+                print(f"Value must not exceed {max_value}. Please try again.")
+                continue
+            return v
+        print("Invalid input! Please enter a non-negative whole number (0,1,2...).")
+
+def schedule_fcfs(processes):
+    # processes: list of dicts with keys pid, arr, burst
+    # sort by arrival then pid
+    procs = sorted(processes, key=lambda x: (x["arr"], x["pid"]))
+    t = 0
+    gantt_segments = []  # list of (pid, start, end) where pid can be "Idle"
+    for p in procs:
+        if t < p["arr"]:
+            gantt_segments.append(("Idle", t, p["arr"]))
+            t = p["arr"]
+        start = t
+        end = start + p["burst"]
+        gantt_segments.append((p["pid"], start, end))
+        p["start"] = start
+        p["finish"] = end
+        p["waiting"] = start - p["arr"]
+        p["turnaround"] = end - p["arr"]
+        t = end
+    return procs, gantt_segments
+
+def print_table(procs):
+    print("\nProcesses  Arrival  Burst  Waiting  Turnaround")
+    for p in procs:
+        print(f"{p['pid']:<8}{p['arr']:>8}{p['burst']:>7}{p['waiting']:>9}{p['turnaround']:>12}")
+    n = len(procs)
+    avg_w = sum(p['waiting'] for p in procs) / n
+    avg_t = sum(p['turnaround'] for p in procs) / n
+    print(f"\nAverage waiting time = {avg_w:.1f}")
+    print(f"Average turn around time = {avg_t:.12g}")
+
+def print_gantt_box(gsegments):
+    unit = 1
+    min_w = 3
+    widths = []
+    for _, s, e in gsegments:
+        dur = max(1, e - s)
+        w = max(min_w, dur * unit * 3)
+        widths.append(w)
+
+    top = ""
+    middle = ""
+    bottom = ""
+    positions = []
+    cur_pos = 0
+    for idx, (pid, s, e) in enumerate(gsegments):
+        w = widths[idx]
+        top += "+" + "-" * w
+        middle += "|" + pid.center(w)
+        bottom += "+" + "-" * w
+        positions.append((cur_pos + 1, s))
+        cur_pos += w + 1
+    top += "+"
+    middle += "|"
+    bottom += "+"
+
+    print("\nGANTT CHART:")
+    print(top)
+    print(middle)
+    print(bottom)
+
+    line_len = len(top)
+    timeline = [" "] * line_len
+    for pos, time_val in positions:
+        tstr = str(time_val)
+        for i, ch in enumerate(tstr):
+            if pos + i < line_len:
+                timeline[pos + i] = ch
+    final_time = gsegments[-1][2]
+    fstr = str(final_time)
+    end_pos = len(top) - 1
+    for i, ch in enumerate(reversed(fstr)):
+        idx = end_pos - i
+        if 0 <= idx < line_len:
+            timeline[idx] = ch
+
+    print("".join(timeline))
+    print()
+
+def main():
+    print("=== FCFS Scheduling (fixed PIDs, user sets count, max=100) ===")
+    num = get_positive_int("Enter the number of processes (1-100): ", max_value=100)
+
+    processes = []
+    for i in range(num):
+        pid = f"P{i+1}"
+        arr = get_nonneg_int(f"Enter Arrival Time for {pid}: ", max_value=100)
+        burst = get_positive_int(f"Enter Burst Time for {pid}: ", allow_zero=False, max_value=100)
+        processes.append({"pid": pid, "arr": arr, "burst": burst})
+
+    procs, gsegments = schedule_fcfs(processes)
+    print_table(procs)
+    print_gantt_box(gsegments)
+
+if __name__ == "__main__":
+    main()
