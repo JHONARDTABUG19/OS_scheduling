@@ -1,0 +1,29 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. HELLO-WORLD.
+
+       DATA DIVISION.
+       FILE SECTION.
+       WORKING-STORAGE SECTION.
+       01  num1    PIC X(10).
+       01  NUM2    PIC 99.
+
+
+       PROCEDURE DIVISION.
+       MAIN-PARAGRAPH.
+           DISPLAY "ENTER A VALUE: " WITH NO ADVANCING.
+           ACCEPT num1.
+
+           IF FUNCTION TRIM(num1) IS NUMERIC
+           MOVE FUNCTION TRIM(num1) TO NUM2
+           DISPLAY "YOU ENTERED: " NUM2
+           ELSE
+               DISPLAY "INVALID INPUT. PLEASE ENTER A NUMERIC VALUE."
+               GO TO MAIN-PARAGRAPH
+           END-IF.
+
+
+           STOP RUN.
+
+       END PROGRAM HELLO-WORLD.
+
+           
